@@ -1,0 +1,255 @@
+<title>VinBus Blind Spot Sim</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: man hinh trong cabin xe - hai khung song song o tren (camera dau xe, ban do nhin tu tren),
+   bang dieu khien ben duoi. Mot giao dien toi duy nhat (man hinh xe), chon co chu dich. */
+:root {
+  color-scheme: dark;
+  --bg: #0a0f14; --panel: #111922; --panel-2: #172230; --line: #243444; --fg: #e4ecf3; --muted: #8a9cb0;
+  --accent: #19b3a2;
+  --safe: #3fc27f; --caution: #f2c230; --danger: #ff8a1f; --stop: #ff4b4b;
+  --display: "Barlow Condensed", "Arial Narrow", "Segoe UI", Arial, sans-serif;
+  --body: "Barlow", "Segoe UI", Roboto, Arial, sans-serif;
+  --mono: "JetBrains Mono", Consolas, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 var(--body); }
+.app { max-width: 1680px; margin: 0 auto; display: grid; gap: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px 24px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+kbd { font: 600 11px/1 var(--mono); padding: 3px 5px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); color: var(--fg); }
+
+/* thanh tren */
+.bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; min-width: 0; }
+.mark { width: 34px; height: 34px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; flex: none; }
+.mark svg { width: 22px; height: 22px; }
+.brand h1 { font: 700 24px/1 var(--display); letter-spacing: .02em; margin: 0; text-transform: uppercase; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 4px; flex-wrap: wrap; }
+.tab { background: none; border: 0; border-radius: 7px; padding: 7px 12px; color: var(--muted); font-weight: 600; display: flex; gap: 8px; align-items: center; }
+.tab kbd { opacity: .7; }
+.tab[aria-selected="true"] { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+.tab:hover { color: var(--fg); }
+.btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-weight: 600; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #04211d; }
+
+/* hai khung nhin */
+.views { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.view { position: relative; margin: 0; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--line); min-width: 0; }
+.view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.drv { aspect-ratio: 16 / 9; max-width: 100%; }
+.top { min-height: 320px; }
+.cap { position: absolute; left: 10px; bottom: 8px; font: 600 12px/1 var(--body); letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.75); text-shadow: 0 1px 2px #000; pointer-events: none; }
+.drv .cap { left: auto; right: 12px; bottom: 10px; }
+.lvlBox { position: absolute; left: 12px; top: 12px; --lv: var(--safe); background: rgba(8,12,17,.78); border: 1px solid rgba(255,255,255,.1); border-left: 6px solid var(--lv); border-radius: 8px; padding: 8px 14px 8px 12px; min-width: 220px; backdrop-filter: blur(4px); }
+.lvl { font: 700 clamp(22px, 3vw, 34px)/1 var(--display); letter-spacing: .04em; color: var(--lv); }
+.lvlsub { font-size: 13px; color: #c6d3df; margin-top: 4px; }
+.spdBox { position: absolute; right: 12px; top: 12px; background: rgba(8,12,17,.78); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 6px 12px; text-align: right; }
+.spdBox b { font: 700 clamp(26px, 3.4vw, 40px)/1 var(--display); font-variant-numeric: tabular-nums; }
+.spdBox span { display: block; font: 600 12px/1.2 var(--body); color: var(--muted); }
+.chips { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 6px; flex-wrap: wrap; max-width: 70%; }
+.chip { font: 600 12px/1 var(--body); padding: 6px 9px; border-radius: 6px; background: rgba(8,12,17,.8); border: 1px solid rgba(255,255,255,.12); }
+.chip.on { color: var(--safe); border-color: rgba(63,194,127,.5); }
+.chip.off { color: var(--caution); border-color: rgba(242,194,48,.55); }
+.chip.dim { color: #c6d3df; }
+.chip.brake { color: #fff; background: var(--stop); border-color: var(--stop); animation: blink .5s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .55; } }
+.gauges { position: absolute; right: 12px; bottom: 32px; width: 180px; display: grid; gap: 8px; background: rgba(8,12,17,.78); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 8px 10px; font: 600 12px/1 var(--body); color: var(--muted); }
+.g { display: grid; gap: 5px; }
+.g .row { display: flex; justify-content: space-between; }
+.g .row b { color: var(--fg); font-variant-numeric: tabular-nums; }
+.track { height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); position: relative; overflow: hidden; }
+#trust { height: 100%; background: var(--safe); }
+#yawbar { position: absolute; top: 0; width: 8px; height: 100%; margin-left: -4px; background: var(--caution); border-radius: 3px; }
+.track.mid::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.5); }
+.flash { position: absolute; inset: 0; display: grid; place-items: center; border: 6px solid var(--stop); background: rgba(255,75,75,.18); font: 700 56px/1 var(--display); color: #fff; text-shadow: 0 2px 8px #000; letter-spacing: .06em; pointer-events: none; }
+.legend { position: absolute; left: 8px; top: 8px; background: rgba(8,12,17,.78); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 6px 9px; display: grid; grid-template-columns: auto auto; gap: 4px 12px; font-size: 11.5px; color: #d3dde7; max-width: calc(100% - 20px); }
+.legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -2px; }
+.lg-est { border-radius: 50%; background: var(--safe); border: 2px solid #0b1016; }
+.lg-gt { border: 1.5px solid #fff; }
+.lg-zone { background: rgba(63,194,127,.35); border: 2px solid var(--safe); }
+.lg-path { border: 1.5px dashed #aad8ff; }
+
+/* bang dieu khien */
+.deck { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1.15fr); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.card h2 { font: 700 20px/1.1 var(--display); letter-spacing: .03em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+.eyebrow { font: 700 12px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+.sub { color: var(--muted); margin: 4px 0 0; font-size: 14px; }
+.capline { margin: 0; font-size: 15px; min-height: 3.2em; max-width: 62ch; }
+.prog { height: 4px; background: var(--panel-2); border-radius: 2px; overflow: hidden; }
+#scProg { height: 100%; background: var(--accent); width: 0; }
+.row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.toggles { display: grid; gap: 6px; }
+.tg { display: flex; align-items: center; gap: 10px; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; text-align: left; }
+.tg .sw { width: 32px; height: 18px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); position: relative; flex: none; transition: background .15s; }
+.tg .sw::after { content: ""; position: absolute; width: 12px; height: 12px; border-radius: 50%; top: 2px; left: 2px; background: var(--muted); transition: left .15s; }
+.tg[aria-pressed="true"] .sw { background: var(--accent); border-color: var(--accent); }
+.tg[aria-pressed="true"] .sw::after { left: 16px; background: #fff; }
+.tg span.t { flex: 1; font-weight: 600; font-size: 14px; }
+.tg small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+.spawn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.spawn .btn { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; text-align: left; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.stat b { display: block; font: 700 24px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat.bad b { color: var(--stop); }
+.events { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.events time { font: 600 12px var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); margin-right: 8px; }
+.muted { color: var(--muted); }
+.keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; font-size: 13px; color: #c8d4df; }
+.keys div { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.dim { opacity: .5; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--panel-2); border: 1px solid var(--accent); padding: 10px 16px; border-radius: 8px; font-weight: 600; z-index: 20; max-width: calc(100% - 32px); }
+
+.modal { position: fixed; inset: 0; background: rgba(4,7,10,.72); display: grid; place-items: center; z-index: 30; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; }
+.modal .card { width: min(980px, 100%); max-height: 90vh; overflow: auto; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+th { font: 700 12px/1.2 var(--body); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+td.num { font-variant-numeric: tabular-nums; text-align: right; }
+th.num { text-align: right; }
+
+@media (max-width: 1100px) { .deck { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .deck .card:last-child { grid-column: 1 / -1; } }
+@media (max-width: 860px) {
+  .views { grid-template-columns: minmax(0, 1fr); }
+  .top { min-height: 0; aspect-ratio: 1 / 1; }
+  .deck { grid-template-columns: minmax(0, 1fr); }
+  .gauges { display: none; }
+  .lvlBox { min-width: 0; padding: 6px 10px; }
+  .legend { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .chip.brake { animation: none; } }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#04211d" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="3" width="16" height="15" rx="3"></rect><path d="M4 11h16M8 21v-3M16 21v-3"></path><circle cx="8" cy="14.5" r=".6" fill="#04211d"></circle><circle cx="16" cy="14.5" r=".6" fill="#04211d"></circle></svg></div>
+      <div><h1>VinBus Blind Spot Sim</h1><p>Camera đầu xe + con quay điện thoại, mô phỏng thời gian thực</p></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Kịch bản">
+      <button class="tab" role="tab" data-k="stop">Rời bến <kbd>5</kbd></button>
+      <button class="tab" role="tab" data-k="turn">Rẽ ở ngã tư <kbd>6</kbd></button>
+      <button class="tab" role="tab" data-k="child">Trẻ em lao ra <kbd>7</kbd></button>
+      <button class="tab" role="tab" data-k="free">Lái tự do <kbd>8</kbd></button>
+    </nav>
+    <button class="btn primary" id="benchBtn" type="button">Chạy so sánh số liệu</button>
+  </header>
+
+  <section class="views">
+    <figure class="view drv" id="drvWrap">
+      <canvas id="drv3d"></canvas><canvas id="drvOv"></canvas>
+      <div class="lvlBox" id="lvlBox"><div class="lvl" id="lvl">AN TOÀN</div><div class="lvlsub" id="lvlsub"></div></div>
+      <div class="spdBox"><b id="spd">0</b><span>km/h</span></div>
+      <div class="chips" id="chips"></div>
+      <div class="gauges">
+        <div class="g"><div class="row"><span>Độ tin camera</span></div><div class="track"><div id="trust"></div></div></div>
+        <div class="g"><div class="row"><span>Tốc độ quay (gyro)</span><b id="yaw">0°/s</b></div><div class="track mid"><div id="yawbar"></div></div></div>
+      </div>
+      <div class="flash" id="flash" hidden>VA CHẠM</div>
+      <figcaption class="cap">Camera đầu xe · 90°</figcaption>
+    </figure>
+    <figure class="view top" id="topWrap">
+      <canvas id="top3d"></canvas><canvas id="topOv"></canvas>
+      <div class="legend" aria-label="Chú giải">
+        <div><i class="lg-est"></i>Hệ thống ước lượng</div>
+        <div><i class="lg-gt"></i>Vị trí thật</div>
+        <div><i class="lg-zone"></i>Vùng sát đầu xe</div>
+        <div><i class="lg-path"></i>Đường xe sắp đi qua</div>
+      </div>
+      <figcaption class="cap">Nhìn từ trên xuống · đầu xe hướng lên</figcaption>
+    </figure>
+  </section>
+
+  <section class="deck">
+    <article class="card">
+      <div>
+        <p class="eyebrow">Kịch bản</p>
+        <h2 id="scTitle">Rẽ phải ở ngã tư</h2>
+        <p class="sub" id="scSub"></p>
+      </div>
+      <p class="capline" id="scCap" aria-live="polite"></p>
+      <div class="prog" id="scProgWrap"><div id="scProg"></div></div>
+      <div class="row-btns">
+        <button class="btn" id="restartBtn" type="button">Chạy lại (R)</button>
+        <button class="btn" id="pauseBtn" type="button">Tạm dừng (P)</button>
+        <button class="btn" id="bumpBtn" type="button">Xóc ổ gà (V)</button>
+      </div>
+      <div class="keys">
+        <div><kbd>↑</kbd><kbd>Q</kbd> tăng tốc</div>
+        <div><kbd>↓</kbd><kbd>E</kbd> giảm tốc, giữ để dừng</div>
+        <div><kbd>←</kbd><kbd>→</kbd> đánh lái</div>
+        <div><kbd>Space</kbd> tạm dừng</div>
+      </div>
+    </article>
+
+    <article class="card">
+      <p class="eyebrow">Điều khiển hệ thống</p>
+      <div class="toggles">
+        <button class="tg" id="t_comp" type="button" aria-pressed="true"><span class="sw"></span><span class="t">Bù chuyển động bằng IMU<small>Trừ phần khung hình trượt do xe rẽ</small></span><kbd>I</kbd></button>
+        <button class="tg" id="t_aeb" type="button" aria-pressed="true"><span class="sw"></span><span class="t">Phanh tự động<small>Phanh khi có người trong vùng hoặc TTC &lt; 1,2 s</small></span><kbd>U</kbd></button>
+        <button class="tg" id="t_sync" type="button" aria-pressed="false"><span class="sw"></span><span class="t">Lỗi đồng bộ IMU 150 ms<small>Ca lỗi: dữ liệu IMU lệch thời gian</small></span><kbd>K</kbd></button>
+        <button class="tg" id="t_gt" type="button" aria-pressed="true"><span class="sw"></span><span class="t">Hiện vị trí thật<small>Ô vuông trắng trên bản đồ</small></span><kbd>G</kbd></button>
+      </div>
+      <div id="spawnBox">
+        <p class="eyebrow">Thả người đi bộ phía trước xe</p>
+        <div class="spawn">
+          <button class="btn" type="button" data-spawn="right">Cắt ngang từ phải <kbd>1</kbd></button>
+          <button class="btn" type="button" data-spawn="left">Cắt ngang từ trái <kbd>2</kbd></button>
+          <button class="btn" type="button" data-spawn="static">Người đứng yên <kbd>3</kbd></button>
+          <button class="btn" type="button" data-spawn="child">Trẻ em lao ra <kbd>4</kbd></button>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <p class="eyebrow">Số liệu lần chạy này (so với vị trí thật)</p>
+      <div class="stats">
+        <div class="stat"><b id="mFA">0</b><span>Báo động giả</span></div>
+        <div class="stat"><b id="mNB">0</b><span>Phanh không cần thiết</span></div>
+        <div class="stat"><b id="mWarn">–</b><span>Nguy hiểm được báo trước ≥ 0,5 s</span></div>
+        <div class="stat"><b id="mLead">–</b><span>Báo trước trung bình</span></div>
+        <div class="stat"><b id="mCol">0</b><span>Va chạm</span></div>
+        <div class="stat"><b id="mErr">–</b><span>Sai số khoảng cách người lớn / trẻ em</span></div>
+      </div>
+      <ul class="events" id="events"></ul>
+    </article>
+  </section>
+</div>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<div class="modal" id="bench" hidden>
+  <div class="card">
+    <div class="row-btns" style="justify-content: space-between; align-items: center;">
+      <div><p class="eyebrow">So sánh tự động</p><h2>Bật và tắt bù IMU trên cả 3 kịch bản</h2></div>
+      <button class="btn" id="benchClose" type="button">Đóng</button>
+    </div>
+    <div class="prog"><div id="benchProg" style="height:100%;width:0;background:var(--accent)"></div></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Kịch bản</th><th>Chế độ</th><th class="num">Báo động giả</th><th class="num">Phanh oan</th><th class="num">Báo kịp thời</th><th class="num">Báo trước (s)</th><th class="num">Va chạm</th><th class="num">Sai số KC lớn / trẻ</th></tr></thead>
+        <tbody id="benchBody"></tbody>
+      </table>
+    </div>
+    <p class="sub" id="benchNote"></p>
+  </div>
+</div>
+
+<!--THREE-->
+<script>
+/*CORE*/
+/*RENDER*/
+/*APP*/
+</script>

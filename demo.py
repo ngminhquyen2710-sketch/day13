@@ -1,16 +1,36 @@
-"""Menu demo: chon chay camera that hoac mo phong.
+"""Menu demo: bam MOT phim so de chon, khong can Enter.
 
     python demo.py
-Dong cua so dang chay (phim q) se quay lai menu.
+Dong cua so dang chay (phim q hoac Esc) se quay lai menu.
 """
 import os
 import subprocess
 import sys
-
-import yaml
+import webbrowser
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
+
+
+def getkey():
+    """Doc mot phim, khong can Enter."""
+    if os.name == "nt":
+        import msvcrt
+        ch = msvcrt.getwch()
+        if ch in ("\x00", "\xe0"):          # phim dac biet (mui ten...) -> bo qua
+            msvcrt.getwch()
+            return ""
+        return ch
+    import termios
+    import tty
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        return sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
 def run(args):
@@ -18,44 +38,50 @@ def run(args):
     subprocess.run([PY] + args, cwd=HERE)
 
 
-def main():
-    with open(os.path.join(HERE, "config.yaml"), encoding="utf-8") as f:
-        url = yaml.safe_load(f)["imu"]["phyphox_url"]
-    while True:
-        print("""
+def phyphox_url():
+    try:
+        import yaml
+        with open(os.path.join(HERE, "config.yaml"), encoding="utf-8") as f:
+            return yaml.safe_load(f)["imu"]["phyphox_url"]
+    except Exception:
+        return "http://192.168.43.1:8080"
+
+
+MENU = """
 ==============================================
    VinBus Blind Spot Guard - DEMO
 ==============================================
- 1. Camera that + IMU dien thoai (Phyphox)
- 2. Camera that + IMU gia lap bang phim
- 3. Mo phong - kich ban tu dong
- 4. Mo phong - tu dieu khien
- 5. Mo phong - bang so lieu so sanh (khong mo cua so)
- 6. Chay tren file video + IMU gia lap
- 7. Tong hop log cua lan chay camera gan nhat
+ 1. Mo phong 3D tren trinh duyet (sim.html)
+ 2. Camera that + IMU dien thoai (Phyphox)
+ 3. Camera that + IMU gia lap bang phim
+ 4. Chay tren file video + IMU gia lap
+ 5. Tong hop log cua lan chay camera gan nhat
  0. Thoat
-----------------------------------------------""")
-        c = input("Chon: ").strip()
+----------------------------------------------
+Bam mot phim so: """
+
+
+def main():
+    while True:
+        print(MENU, end="", flush=True)
+        c = getkey()
+        print(c)
         if c == "1":
-            u = input(f"URL Phyphox [{url}]: ").strip() or url
-            run(["main.py", "--url", u])
+            webbrowser.open(Path(HERE, "sim.html").resolve().as_uri())
+            print("Da mo sim.html tren trinh duyet.")
         elif c == "2":
-            run(["main.py", "--imu", "sim"])
+            run(["main.py", "--url", phyphox_url()])
         elif c == "3":
-            run(["simulate.py"])
+            run(["main.py", "--imu", "sim"])
         elif c == "4":
-            run(["simulate.py", "--manual"])
-        elif c == "5":
-            run(["simulate.py", "--compare"])
-            input("\nEnter de quay lai menu...")
-        elif c == "6":
-            v = input("Duong dan video (keo tha file vao day): ").strip().strip('"')
+            v = input("Duong dan video (keo tha file vao day roi Enter): ").strip().strip('"')
             if v:
                 run(["main.py", "--source", v, "--imu", "sim", "--loop"])
-        elif c == "7":
+        elif c == "5":
             run(["analyze.py"])
-            input("\nEnter de quay lai menu...")
-        elif c == "0":
+            print("Bam phim bat ky de quay lai menu...")
+            getkey()
+        elif c in ("0", "q", "\x1b", "\x03"):
             break
 
 

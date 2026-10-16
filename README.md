@@ -4,58 +4,108 @@ Cảnh báo người đi bộ cắt ngang điểm mù của xe buýt VinBus, dù
 
 > Camera thấy người, IMU biết xe đang làm gì; ghép lại để không báo động giả khi chính chiếc xe rẽ hoặc rung.
 
-## Cách nhanh nhất: menu demo
+## Cài đặt và chạy mô phỏng (5 phút)
+
+### Cách A: chỉ xem mô phỏng 3D, không cần cài gì
+
+1. Tải code về: trên trang GitHub bấm nút xanh **Code → Download ZIP**, giải nén. Hoặc dùng git:
+   ```bash
+   git clone https://github.com/ngminhquyen2710-sketch/day13.git
+   ```
+2. Mở thư mục vừa tải, **nháy đúp file `sim.html`**. Trang mở trong Chrome hoặc Edge.
+3. Bấm vào trang một lần cho trình duyệt nhận bàn phím, rồi chọn kịch bản ở thanh trên cùng.
+
+`sim.html` đã nhúng sẵn thư viện 3D nên chạy được khi không có mạng. Nếu nháy đúp mà máy mở bằng ứng dụng khác, chuột phải vào file → **Open with** → **Google Chrome** hoặc **Microsoft Edge**.
+
+### Cách B: chạy cả bản camera thật (Python)
+
+Cần **Python 3.9 trở lên**. Kiểm tra bằng `python --version`; nếu chưa có, cài từ [python.org](https://www.python.org/downloads/) và nhớ tích **Add Python to PATH**.
 
 ```bash
-python demo.py
-```
-Chọn số để chạy camera thật, mô phỏng, hoặc in bảng số liệu. Đóng cửa sổ đang chạy bằng phím `q` sẽ quay lại menu, nên khi trình bày có thể chuyển qua lại giữa camera và mô phỏng.
-
-## 0. Mô phỏng (không cần webcam, không cần điện thoại)
-
-```bash
-python simulate.py              # mở cửa sổ mô phỏng, tự chạy kịch bản demo 24 giây lặp lại
-python simulate.py --manual     # tự điều khiển bằng phím
-python simulate.py --compare    # chạy nhanh 10 lần, in bảng số liệu so sánh
+cd day13                                    # thư mục chứa main.py
+python -m pip install -r requirements.txt   # lần đầu, cần mạng, mất vài phút
+python demo.py                              # menu: bấm 1 để mở mô phỏng, 2-3 để chạy camera
 ```
 
-Thế giới ảo gồm xe buýt (camera đầu xe góc rộng + con quay) trên một con đường có người đi bộ. Từ bước "camera thấy box người" trở đi, mô phỏng dùng **đúng code thật** của hệ thống (`vision.py` → `tracker.py` → `risk.py` → `ui.py`). Vì biết vị trí thật của từng người, thanh dưới cùng tự tính số liệu **ground truth**: báo động giả, cảnh báo kịp thời, sai số khoảng cách. Ô vuông trắng trên bản đồ là vị trí thật.
+Lần đầu chạy camera, chương trình tự tải model YOLO (khoảng 5 MB), nên hãy chạy thử một lần khi có mạng trước buổi thi.
 
-**Kịch bản tự động** (chữ phụ đề ở dưới khung hình báo đang ở cảnh nào):
-1. Ba người đứng yên bên đường.
-2. Xe rẽ phải, trái nhiều lần: người đứng yên không được gây báo động. Bấm `i` để tắt bù IMU và xem báo động giả xuất hiện.
-3. Người lớn cắt ngang trước xe.
-4. Trẻ em cắt ngang: **ca lỗi**, vì thấp nên hệ thống tưởng ở xa hơn khoảng 50%.
-5. Xe đi qua ổ gà: thanh "camera trust" tụt.
-6. Người cắt ngang trong lúc xe đang rẽ.
+### Dùng mô phỏng thế nào
+
+| Bước | Làm gì | Thấy gì |
+|---|---|---|
+| 1 | Chọn **Rẽ ở ngã tư** (phím `6`) | Xe rẽ phải, người đứng chờ ở góc đường giữ màu xanh |
+| 2 | Bấm `R` để chạy lại, rồi bấm `I` để **tắt bù IMU** | Người đứng yên có mũi tên vận tốc dài, xe phanh oan |
+| 3 | Chọn **Rời bến** (phím `5`) | Người chạy qua đầu xe, cảnh báo chuyển vàng → cam → đỏ, xe tự phanh |
+| 4 | Chọn **Trẻ em lao ra** (phím `7`) | Ca lỗi: em bị che khuất và bị ước lượng xa hơn thực tế |
+| 5 | Chọn **Lái tự do** (phím `8`), giữ `Q` để chạy, bấm `1`–`4` để thả người | Cho giám khảo tự thử |
+| 6 | Bấm nút **Chạy so sánh số liệu** | Bảng số báo động giả, phanh oan, cảnh báo kịp thời ở cả 3 kịch bản |
+
+**Lỗi thường gặp**
+
+| Hiện tượng | Cách sửa |
+|---|---|
+| Bấm phím không có tác dụng | Bấm chuột vào trang một lần để trình duyệt nhận bàn phím |
+| Màn hình 3D đen hoặc rất giật | Bật tăng tốc phần cứng: Chrome → Settings → System → **Use graphics acceleration when available** |
+| Bấm phím hiện ô nhỏ có chữ và phải Enter (cửa sổ camera Python) | Bộ gõ tiếng Việt đang giữ phím; chuyển sang gõ tiếng Anh (Unikey: `Ctrl + Shift`) |
+| `No module named 'cv2'` | Chưa cài thư viện: chạy `python -m pip install -r requirements.txt` |
+| `python` không được nhận | Thử `py` thay cho `python` |
+
+## Cách nhanh nhất
+
+**Mô phỏng 3D:** mở thẳng file `sim.html` bằng Chrome hoặc Edge (nháy đúp). Không cần cài gì, không cần mạng, không cần webcam.
+
+**Menu demo:** `python demo.py`, rồi bấm một phím số (không cần Enter). Đóng cửa sổ camera bằng `q` hoặc `Esc` để quay lại menu.
+
+> Nếu bấm `q` mà hiện một ô nhỏ có chữ "q" và phải Enter mới nhận: đó là bộ gõ tiếng Việt (Unikey / Telex của Windows) đang giữ phím. Chuyển sang gõ tiếng Anh (Unikey: `Ctrl + Shift`, bộ gõ Windows: `Windows + Space`) trước khi demo. Trang `sim.html` đọc phím vật lý nên không bị ảnh hưởng.
+
+## 0. Mô phỏng 3D (`sim.html`)
+
+Xe buýt VinBus chạy trên phố 3D có người đi bộ, nhà, cây, xe đỗ. Khung trái là **camera đầu xe** (góc 90°), khung phải là **bản đồ nhìn từ trên xuống**, đầu xe luôn hướng lên. Từ bước "camera thấy box người" trở đi, mô phỏng chạy **cùng thuật toán** với code Python: pinhole ra mét, Kalman có bù quay bằng con quay + bù tịnh tiến bằng tốc độ xe, dự báo thời gian đến va chạm (TTC), phanh tự động.
+
+Vì biết vị trí thật của từng người, trang tự tính số liệu **ground truth**: báo động giả (cảnh báo mà 2,5 s sau vẫn không có nguy hiểm thật), phanh không cần thiết, nguy hiểm được báo trước ít nhất 0,5 s, va chạm, sai số khoảng cách.
+
+**Ba kịch bản dựng sẵn**
+
+| Kịch bản | Chuyện gì xảy ra | Để chứng minh |
+|---|---|---|
+| **Rời bến** (phím `5`) | Xe rời bến, một người chạy băng qua đầu xe để kịp lên xe | Dự báo quỹ đạo, cảnh báo trước khoảng 1,7 s, phanh tự động tránh va chạm |
+| **Rẽ phải ở ngã tư** (phím `6`) | Xe rẽ phải, nhiều người đứng chờ ở góc đường, một người đang qua đường ở nhánh xe rẽ vào | Bù IMU: tắt bù (`I`) thì người đứng yên bị tưởng đang chạy, xe phanh oan |
+| **Trẻ em lao ra** (phím `7`) | Em nhỏ chạy ra từ khe giữa hai ô tô đỗ | Ca lỗi: bị che khuất nên thấy muộn, thấp hơn giả định nên bị ước lượng xa hơn khoảng 48% |
+| **Lái tự do** (phím `8`) | Bạn tự lái và thả người đi bộ | Cho giám khảo tự thử |
+
+**Phím**
 
 | Phím | Chức năng |
 |---|---|
-| `p` | Bật/tắt kịch bản tự động |
-| `1` / `2` | Người cắt ngang từ phải / trái |
-| `3` | Người đứng yên bên đường |
-| `4` | Trẻ em cắt ngang |
-| `5` | Người đi bộ dọc vỉa hè |
-| `a` / `d` | Xe rẽ trái / phải (1 giây, 45°) |
-| `w` / `s` | Tăng / giảm tốc độ xe |
-| `v` | Xóc ổ gà |
-| `k` | Bật lỗi đồng bộ thời gian IMU 150 ms (ca lỗi) |
-| `i` | Bật/tắt bù IMU |
-| `g` | Hiện/ẩn vị trí thật |
-| `z` | Đặt lại số liệu |
-| `x` | Xóa hết người |
-| `r` | Quay video màn hình (lưu trong `logs/`) |
-| `h` / `q` | Hướng dẫn / thoát |
+| `↑` hoặc `Q` (giữ) | Tăng tốc |
+| `↓` hoặc `E` (giữ) | Giảm tốc; giữ đủ lâu thì xe dừng hẳn |
+| `←` `→` (giữ) | Đánh lái |
+| `1` `2` `3` `4` | Thả người cắt ngang từ phải / từ trái / người đứng yên / trẻ em lao ra |
+| `I` | Bật/tắt bù IMU |
+| `U` | Bật/tắt phanh tự động |
+| `K` | Bật lỗi đồng bộ IMU 150 ms (ca lỗi) |
+| `G` | Hiện/ẩn vị trí thật |
+| `V` | Xóc ổ gà |
+| `R` | Chạy lại kịch bản |
+| `P` hoặc `Space` | Tạm dừng |
 
-**Kết quả `python simulate.py --compare`** (10 lần kịch bản, 30 lượt người đứng yên, 30 lượt cắt ngang):
+Đang chạy kịch bản mà bấm phím lái thì bạn giành quyền lái ngay.
 
-| Chế độ | Báo động giả | Cảnh báo kịp thời (≥ 0,5 s) | Thời gian báo trước TB | Sai số khoảng cách người lớn / trẻ em |
-|---|---|---|---|---|
-| Tắt bù IMU | 148 | 27/30 | 1,45 s | 4% / 46% |
-| **Bật bù IMU** | **0** | **28/30** | **1,51 s** | 4% / 47% |
-| Bật bù + lệch đồng bộ 150 ms | 198 | 24/30 | 1,24 s | 4% / 47% |
+**Nút "Chạy so sánh số liệu"** chạy nhanh cả 3 kịch bản, mỗi kịch bản 6 lần với nhiễu khác nhau, ở 3 chế độ, rồi in bảng. Kết quả lần chạy thử:
 
-Đọc bảng: bù IMU xóa gần như toàn bộ báo động giả mà không làm mất cảnh báo thật; nhưng nếu đồng bộ thời gian sai 150 ms thì bù lệch pha và còn tệ hơn không bù. Đây là lý do phải đo độ trễ (phím `l` ở chế độ thật). Lưu ý đây là số trong mô phỏng, nhiễu được giả định; số đo thật trong lớp sẽ khác.
+| Kịch bản | Chế độ | Báo động giả | Phanh oan | Báo kịp thời | Báo trước TB | Va chạm |
+|---|---|---|---|---|---|---|
+| Rời bến | Bật bù IMU | 1 | 1 | 6/6 | 1,7 s | 0 |
+| Rẽ phải ở ngã tư | **Bật bù IMU** | **9** | **0** | 6/6 | 1,3 s | 0 |
+| Rẽ phải ở ngã tư | Tắt bù IMU | 16 | 6 | 6/6 | 3,4 s | 0 |
+| Rẽ phải ở ngã tư | Bật bù + lệch đồng bộ 150 ms | 12 | 0 | 6/6 | 1,3 s | 0 |
+| Trẻ em lao ra | Bật bù IMU | 0 | 0 | 3/6 | 0,5 s | 0 |
+
+Đọc bảng: khi xe rẽ, tắt bù IMU làm xe **phanh oan 6 lần** trong 6 lượt; bật bù thì không lần nào. Trẻ em lao ra chỉ được báo trước 0,5 s (người lớn 1,7 s): đây là ca lỗi để trình bày. Đây là số trong mô phỏng với nhiễu giả định, không phải số đo thật.
+
+**Sửa mô phỏng:** mã nguồn nằm trong thư mục `web/` (`core.js` là thuật toán, `render.js` là đồ họa 3D, `app.js` là giao diện). Sửa xong chạy `python web/build.py` để tạo lại `sim.html`.
+
+Bản mô phỏng Python cũ vẫn còn (`python simulate.py`, `python simulate.py --compare`) nếu cần.
 
 ## 1. Cài đặt (làm trước buổi thi)
 
@@ -134,7 +184,8 @@ Phyphox gyro ─► đồng bộ thời gian ─► góc quay ┘        ▲
 | `risk.py` | Vùng nguy hiểm, hành lang đường đi, TTC, mức cảnh báo | C – Tracking |
 | `recorder.py`, `analyze.py` | Ghi log CSV, tổng hợp số liệu | C – Bằng chứng |
 | `main.py` | Ghép tất cả, phím tắt | Cả team |
-| `simulate.py` | Thế giới ảo + kịch bản demo + số liệu ground truth | Cả team |
+| `sim.html`, `web/` | Mô phỏng 3D trên trình duyệt, 3 kịch bản, số liệu ground truth | Cả team |
+| `simulate.py` | Mô phỏng Python cũ (2D) | Cả team |
 
 **Mức cảnh báo**
 - **STOP**: người đã ở trong vùng nguy hiểm sát đầu xe (2 m).
