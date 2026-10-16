@@ -1,0 +1,55 @@
+# ===== VinBus Blind Spot Guard - cau hinh =====
+# Chi can sua file nay, khong can dong vao code.
+
+camera:
+  source: 0             # 0 = webcam laptop; hoac duong dan video, vd "videos/test1.mp4"
+  width: 1280
+  height: 720
+  focal_px: null        # null = uoc luong 0.8 x chieu rong anh. Bam phim 'c' de hieu chuan that.
+
+detector:
+  model: yolo11n.pt     # tu tai lan dau chay
+  conf: 0.40
+  imgsz: 640
+
+person:
+  height_m: 1.65        # chieu cao nguoi gia dinh (mo hinh pinhole)
+  height_min_m: 1.50    # dung cho uoc luong than trong (nguoi thap hon => gan hon)
+
+calibration:
+  distance_m: 2.0       # khi bam 'c', nguoi dung cach camera dung khoang nay
+
+imu:
+  source: phyphox       # phyphox | sim | none
+  phyphox_url: "http://192.168.43.1:8080"   # lay URL hien trong app Phyphox (Remote access)
+  buffers:              # ten buffer cua thi nghiem "Gyroscope (rotation rate)"
+    time: gyr_time
+    x: gyrX
+    y: gyrY
+    z: gyrZ
+  yaw_axis: y           # truc quay cua dien thoai khi xe re (bam 't' de tu do)
+  yaw_sign: 1
+  latency_s: 0.0        # do tre camera so voi IMU (bam 'l' de do)
+  turn_threshold_dps: 15        # toc do quay > nguong nay => coi la xe dang re
+  vibration_threshold: 0.15     # rad/s, nguong rung cua gyro
+
+tracking:
+  accel_noise: 1.5      # m/s^2, do bien thien van toc nguoi (nhieu qua trinh Kalman)
+  pixel_noise: 4.0      # px, nhieu do cua box
+  gate_m: 1.0           # khoang cach toi da de ghep detection vao track
+  max_missed: 10        # so khung hinh mat dau truoc khi xoa track
+  confirm_hits: 3
+
+risk:
+  zone_half_width_m: 0.5   # nua be ngang vung nguy hiem (mo hinh thu nho trong lop)
+  zone_depth_m: 2.0        # do sau vung nguy hiem phia truoc camera (co nguoi => STOP)
+  path_length_m: 4.5       # chieu dai hanh lang duong di cua xe (du bao cat ngang)
+  turn_expand_m: 0.8       # noi rong vung ve phia xe dang re
+  horizon_s: 3.0           # du bao truoc bao nhieu giay
+  danger_s: 1.5            # TTC < nguong nay => DANGER
+  min_speed_mps: 0.3       # nguoi cham hon nguong nay coi la dung yen
+  conservative: true       # dung khoang cach than trong (theo height_min_m)
+
+ui:
+  bev_range_m: 5.0
+  beep: true
